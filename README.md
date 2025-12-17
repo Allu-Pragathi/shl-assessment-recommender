@@ -8,6 +8,15 @@ The solution scrapes SHL’s public product catalog, processes and stores assess
 
 ---
 
+## 🌐 Live Deployed Application
+🔗 Streamlit Web App (Live Demo):
+
+https://shl-assessment-rag.streamlit.app
+
+Users can enter a hiring requirement (e.g., “numerical reasoning test for analysts”) and receive the most relevant SHL assessments in real time.
+
+---
+
 ## 🚀 Features
 
 - Automated scraping of SHL product catalog
