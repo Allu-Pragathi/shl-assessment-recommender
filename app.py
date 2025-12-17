@@ -2,6 +2,11 @@ import streamlit as st
 import pandas as pd
 from src.recommender import SHLRecommender
 
+@st.cache_resource
+def load_recommender():
+    return SHLRecommender()
+
+recommender = load_recommender()
 # --------------------------------------------------
 # Page configuration
 # --------------------------------------------------

@@ -1,46 +1,57 @@
+import os
 import pickle
 import numpy as np
+import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
 from sentence_transformers import SentenceTransformer
-from pathlib import Path
 
-EMBEDDINGS_PATH = Path("data/embeddings.pkl")
-
+DATA_PATH = "data/shl_catalog.csv"
+EMBEDDINGS_PATH = "data/embeddings.npy"
+METADATA_PATH = "data/metadata.pkl"
 
 class SHLRecommender:
     def __init__(self):
-        with open(EMBEDDINGS_PATH, "rb") as f:
-            data = pickle.load(f)
-
-        self.embeddings = data["embeddings"]
-        self.catalog = data["catalog"]
-
         self.model = SentenceTransformer("all-MiniLM-L6-v2")
 
-    def recommend(self, query: str, top_k: int = 5):
-        """
-        Always returns Top-K relevant SHL assessments
-        """
-        # Light query expansion (improves generic queries)
-        expanded_query = f"{query} assessment test"
+        # Load catalog
+        self.df = pd.read_csv(DATA_PATH)
 
-        query_embedding = self.model.encode(
-            expanded_query,
-            normalize_embeddings=True
-        )
+        # Generate or load embeddings
+        if os.path.exists(EMBEDDINGS_PATH) and os.path.exists(METADATA_PATH):
+            self.embeddings = np.load(EMBEDDINGS_PATH)
+            with open(METADATA_PATH, "rb") as f:
+                self.metadata = pickle.load(f)
+        else:
+            self._build_embeddings()
 
-        # Cosine similarity via dot product (normalized vectors)
-        scores = np.dot(self.embeddings, query_embedding)
+    def _build_embeddings(self):
+        texts = (
+            self.df["assessment_name"].fillna("") + " "
+            + self.df["description"].fillna("") + " "
+            + self.df["test_type"].fillna("")
+        ).tolist()
 
-        top_indices = np.argsort(scores)[::-1][:top_k]
+        self.embeddings = self.model.encode(texts, show_progress_bar=False)
+
+        self.metadata = self.df[["assessment_name", "url"]].to_dict(orient="records")
+
+        os.makedirs("data", exist_ok=True)
+        np.save(EMBEDDINGS_PATH, self.embeddings)
+
+        with open(METADATA_PATH, "wb") as f:
+            pickle.dump(self.metadata, f)
+
+    def recommend(self, query, top_k=5):
+        query_embedding = self.model.encode([query])
+        scores = cosine_similarity(query_embedding, self.embeddings)[0]
+
+        top_indices = scores.argsort()[::-1][:top_k]
 
         results = []
         for idx in top_indices:
-            item = self.catalog[idx]
             results.append({
-                "assessment_name": item["assessment_name"],
-                "description": item["description"],
-                "test_type": item["test_type"],
-                "url": item["url"],
+                "assessment_name": self.metadata[idx]["assessment_name"],
+                "url": self.metadata[idx]["url"],
                 "score": float(scores[idx])
             })
 
