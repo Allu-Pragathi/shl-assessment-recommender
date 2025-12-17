@@ -49,9 +49,10 @@ class SHLRecommender:
 
         results = []
         for idx in top_indices:
+            row = self.metadata.iloc[idx]
             results.append({
-                "assessment_name": self.metadata[idx]["assessment_name"],
-                "url": self.metadata[idx]["url"],
+                "assessment_name": row["assessment_name"],
+                "url": row["url"],
                 "score": float(scores[idx])
             })
 
